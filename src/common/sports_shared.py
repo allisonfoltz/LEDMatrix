@@ -911,11 +911,32 @@ class SportsCoreSharedMixin:
         """
         try:
             # Fetch current week and next few days for immediate display
-            now = datetime.now(pytz.utc)
-            start_date = now - timedelta(days=self.schedule_lookback_days)
-            end_date = now + timedelta(days=self.schedule_lookahead_days)
+            #ABF START: change lookback and lookahead days. Also take out the UTC time specification otherwise the logic doesn't work right late night monday (it was only getting tuesday forward)
+            #now = datetime.now(pytz.utc)
+            #start_date = now - timedelta(days=self.schedule_lookback_days)
+            #end_date = now + timedelta(days=self.schedule_lookahead_days)
+            now = datetime.now()
+            if self.league == "nfl":
+                weekday_idx = 1 #tuesday because nfl weeks end monday
+            else:
+                weekday_idx = 0 #monday - i think ncaa weeks end sunday
+            lookback = weekday_idx - now.weekday()
+            if lookback > 0:
+                lookback -=7
+            lookback = abs(lookback)
+            lookahead = weekday_idx - now.weekday()
+            if lookahead <= 0:
+                lookahead +=7
+            start_date = now - timedelta(days=lookback)
+            end_date = now + timedelta(days=lookahead)
+            #ABF END
             date_str = f"{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}"
             url = f"https://site.api.espn.com/apis/site/v2/sports/{self.sport}/{self.league}/scoreboard"
+            #ABF START: log some stuff
+            self.logger.info(
+                f"ABF: range is {date_str}. url is {url}. sport is {self.sport}. league is {self.league}."
+            )
+            #ABF END
             data = fetch_espn_scoreboard(
                 self.session,
                 url,
